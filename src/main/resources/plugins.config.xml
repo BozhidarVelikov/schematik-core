@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugins>
+    <plugin
+            name="WebserviceAuthentication"
+            class="org.schematik.api.DefaultRestApiAuthenticationPlugin"
+            enabled="true"
+            env="dev"
+    />
+</plugins>

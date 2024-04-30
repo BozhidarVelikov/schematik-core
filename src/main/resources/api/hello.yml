@@ -1,0 +1,74 @@
+openapi: 3.0.0
+info:
+  title: Test API Service
+  version: 1.0.0
+  description: A dummy example API
+  contact:
+    name: Bozhidar Velikov
+    email: bojidarvelikov2@gmail.com
+paths:
+  /hello/get:
+    get:
+      summary: Get a greeting
+      tags:
+        - hello
+      operationId: get
+      security:
+        - basicAuth: []
+      responses:
+        '200':
+          description: Successful greeting
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          $ref: '#components/responses/UnauthorizedError'
+      x-schematik-security:
+        x-schematik-roles:
+          - USER
+          - ADMIN
+  /hello/get/{id}:
+    get:
+      summary: Get the passed id
+      tags:
+        - hello
+      operationId: getId
+      security:
+        - basicAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: The number that is going to be returned
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          $ref: '#components/responses/UnauthorizedError'
+      x-schematik-security:
+        x-schematik-roles:
+          - ADMIN
+components:
+  responses:
+    UnauthorizedError:
+      description: Authentication information is missing or invalid
+      headers:
+        WWW_Authenticate:
+          schema:
+            type: string
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+security:
+  - basicAuth: []
+x-schematik-security:
+  x-schematik-roles:
+    - USER
