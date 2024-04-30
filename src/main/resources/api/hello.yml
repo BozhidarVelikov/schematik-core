@@ -71,4 +71,4 @@ security:
   - basicAuth: []
 x-schematik-security:
   x-schematik-roles:
-    - USER
+    - ANY

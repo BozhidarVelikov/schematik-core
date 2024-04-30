@@ -6,7 +6,7 @@
 
     <!-- If scheduling this way (<schedule period="12000" initialDelay="1000" fixedRate="true"/>):
             * <period> field is compulsory;
-            * <initialDelay> and fixedRate are optional;
+            * <initialDelay> and <fixedRate> are optional;
             * <fixedRate> set to true means that the task will run every <period> milliseconds.
     -->
 </scheduled-tasks>
