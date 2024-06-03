@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<webservices>
-    <webservice descriptor="hello.yml" class="org.schematik.api.TestController"/>
-</webservices>
