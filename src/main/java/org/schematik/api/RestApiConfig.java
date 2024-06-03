@@ -137,7 +137,7 @@ public class RestApiConfig {
                                 roles.toArray(new RouteRole[0])
                         );
 
-                        logger.info("Registered " + requestAnnotation.annotationType() + " endpoint at " + endpoint);
+                        logEndpointInfo(requestAnnotation, endpoint);
                     });
                 } catch (Exception e) {
                     throw new RuntimeException(e);
@@ -374,6 +374,46 @@ public class RestApiConfig {
                     ),
                     roles
             );
+        }
+    }
+
+    private static String httpRequestFromAnnotation(Annotation annotation) {
+        if (annotation instanceof Get) {
+            return "GET";
+        }
+
+        if (annotation instanceof Post) {
+            return "POST";
+        }
+
+        if (annotation instanceof Put) {
+            return "PUT";
+        }
+
+        if (annotation instanceof Delete) {
+            return "DELETE";
+        }
+
+        if (annotation instanceof Patch) {
+            return "PATCH";
+        }
+
+        if (annotation instanceof Head) {
+            return "HEAD";
+        }
+
+        if (annotation instanceof Options) {
+            return "OPTIONS";
+        }
+
+        throw new RuntimeException("Unknown HTTP request type annotation: " + annotation.annotationType());
+    }
+
+    private static void logEndpointInfo(Annotation requestAnnotation, String endpoint) {
+        if (logger.isDebugEnabled()) {
+            String httpRequest = httpRequestFromAnnotation(requestAnnotation);
+
+            logger.debug("Registered " + httpRequest + " endpoint at " + endpoint);
         }
     }
 }
