@@ -8,7 +8,7 @@ import io.javalin.plugin.bundled.CorsPluginConfig;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.schematik.Application;
 import org.schematik.gson.GsonUtils;
-import org.schematik.plugins.PluginConfig;
+import org.schematik.plugin.PluginConfig;
 import org.schematik.api.RestApiConfig;
 import org.schematik.scheduler.TaskSchedulerConfig;
 import org.slf4j.Logger;

@@ -1,4 +1,4 @@
-package org.schematik.plugins;
+package org.schematik.plugin;
 
 import org.apache.commons.io.IOUtils;
 import org.schematik.Application;

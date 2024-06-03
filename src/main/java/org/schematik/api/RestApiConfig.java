@@ -13,7 +13,7 @@ import org.schematik.api.annotation.request.*;
 import org.schematik.api.security.RouteRoleUtils;
 import org.schematik.gson.LocalDateAdapter;
 import org.schematik.jetty.JettyServer;
-import org.schematik.plugins.PluginConfig;
+import org.schematik.plugin.PluginConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
