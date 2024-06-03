@@ -1,5 +1,6 @@
-package org.schematik.scheduler;
+package org.schematik.scheduler.test;
 
+import org.schematik.scheduler.IScheduledTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

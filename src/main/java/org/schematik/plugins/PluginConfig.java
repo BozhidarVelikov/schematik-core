@@ -1,5 +1,6 @@
 package org.schematik.plugins;
 
+import org.apache.commons.io.IOUtils;
 import org.schematik.Application;
 import org.schematik.util.resource.FileResourceUtil;
 import org.schematik.util.xml.XMLParser;
@@ -7,6 +8,7 @@ import org.schematik.util.xml.XmlElement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +23,11 @@ public class PluginConfig {
             logger.info("Initializing plugins...");
             PluginConfig.plugins = new HashMap<>();
 
-            XmlElement xml = XMLParser.parse(FileResourceUtil.getFileFromResource("plugins.config.xml"));
+            String pluginsConfigContent = IOUtils.toString(
+                    FileResourceUtil.getFileFromResourceAsStream("plugins.config.xml"),
+                    StandardCharsets.UTF_8
+            );
+            XmlElement xml = XMLParser.parse(pluginsConfigContent);
             List<XmlElement> plugins = xml.getElements("plugin");
             for (XmlElement plugin : plugins) {
                 String pluginName = plugin.getProperty("name");

@@ -1,5 +1,6 @@
 package org.schematik.scheduler;
 
+import org.apache.commons.io.IOUtils;
 import org.schematik.util.resource.FileResourceUtil;
 import org.schematik.util.xml.XMLParser;
 import org.schematik.util.xml.XmlElement;
@@ -18,6 +19,7 @@ import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.scheduling.support.PeriodicTrigger;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 
@@ -43,7 +45,11 @@ public class TaskSchedulerConfig implements SchedulingConfigurer {
             logger.info("Scheduling tasks...");
             int numberOfTasks = 0;
 
-            XmlElement xml = XMLParser.parse(FileResourceUtil.getFileFromResource("scheduler.config.xml"));
+            String schedulerConfigContent = IOUtils.toString(
+                    FileResourceUtil.getFileFromResourceAsStream("scheduler.config.xml"),
+                    StandardCharsets.UTF_8
+            );
+            XmlElement xml = XMLParser.parse(schedulerConfigContent);
 
             List<XmlElement> scheduledTasks = xml.getElements("task");
             for (XmlElement task : scheduledTasks) {

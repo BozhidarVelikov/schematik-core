@@ -1,10 +1,13 @@
 package org.schematik.jetty;
 
+import com.google.gson.Gson;
 import io.javalin.Javalin;
 import io.javalin.http.staticfiles.Location;
+import io.javalin.json.JavalinGson;
 import io.javalin.plugin.bundled.CorsPluginConfig;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.schematik.Application;
+import org.schematik.gson.GsonUtils;
 import org.schematik.plugins.PluginConfig;
 import org.schematik.api.RestApiConfig;
 import org.schematik.scheduler.TaskSchedulerConfig;
@@ -28,6 +31,10 @@ public class JettyServer {
     AnnotationConfigApplicationContext context;
 
     public void start() {
+        start(GsonUtils.getDefaultGson());
+    }
+
+    public void start(Gson gson) {
         instance = this;
 
         app = Javalin.create(javalinConfig -> {
@@ -45,20 +52,22 @@ public class JettyServer {
                 staticFileConfig.precompress = false;
             });
 
+            javalinConfig.jsonMapper(new JavalinGson(gson, false));
+
             // javalinConfig.bundledPlugins.enableRouteOverview("/");
         });
 
         // Load properties
         Application.initialize();
 
-        // Task scheduler
-        context = new AnnotationConfigApplicationContext(TaskSchedulerConfig.class);
-
         // Custom plugins
         PluginConfig.initialize();
 
         // Rest API config
         RestApiConfig.initialize();
+
+        // Task scheduler
+        context = new AnnotationConfigApplicationContext(TaskSchedulerConfig.class);
 
         app.start(8090);
 

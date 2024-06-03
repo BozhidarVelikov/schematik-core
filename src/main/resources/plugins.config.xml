@@ -1,8 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugins>
+<!--    <plugin-->
+<!--            name="WebserviceAuthentication"-->
+<!--            class="org.schematik.api.DefaultRestApiAuthenticationPlugin"-->
+<!--            enabled="true"-->
+<!--            env="dev"-->
+<!--    />-->
+
     <plugin
-            name="WebserviceAuthentication"
-            class="org.schematik.api.DefaultRestApiAuthenticationPlugin"
+            name="Hibernate"
+            class="org.schematik.data.hibernate.HibernatePlugin"
             enabled="true"
             env="dev"
     />

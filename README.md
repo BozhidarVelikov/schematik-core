@@ -113,10 +113,11 @@ The example shows a webservice hello, which has two endpoints: `/hello/get`, whi
 "Hello world!" and `/hello/get/{id}`, which returns the passed id.
 
 #### api.config.xml
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <webservices>
-    <webservice descriptor="hello.yml" class="org.schematik.api.TestController"/>
+    <webservice descriptor="hello.yml" class="org.schematik.api.test.TestController"/>
 </webservices>
 ```
 #### hello.yml
@@ -251,10 +252,11 @@ public class TestController implements Controller {
 The example shows a dummy task that logs the name of the method and prints the name of 
 the thread on which the task is running.
 #### scheduler.config.xml
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <scheduled-tasks>
-    <task class="org.schematik.scheduler.MyScheduledTask">
+    <task class="org.schematik.scheduler.test.MyScheduledTask">
         <schedule cron="*/5 * * * * *"/>
         <schedule period="12000" initialDelay="1000" fixedRate="true"/>
     </task>

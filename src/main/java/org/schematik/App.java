@@ -2,6 +2,7 @@ package org.schematik;
 
 import org.eclipse.jetty.io.ManagedSelector;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
+import org.schematik.gson.GsonUtils;
 import org.schematik.jetty.JettyServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <scheduled-tasks>
-    <task class="org.schematik.scheduler.MyScheduledTask">
+    <task class="org.schematik.scheduler.test.MyScheduledTask">
         <schedule cron="*/5 * * * * *"/>
     </task>
 

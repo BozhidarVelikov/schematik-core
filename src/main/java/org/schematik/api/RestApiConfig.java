@@ -1,301 +1,379 @@
 package org.schematik.api;
 
+import com.google.gson.FieldNamingPolicy;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import io.javalin.http.Context;
+import io.javalin.http.HttpStatus;
 import io.javalin.security.RouteRole;
-import io.swagger.parser.OpenAPIParser;
-import io.swagger.v3.oas.models.OpenAPI;
-import io.swagger.v3.oas.models.Operation;
-import io.swagger.v3.oas.models.PathItem;
-import io.swagger.v3.oas.models.Paths;
-import io.swagger.v3.oas.models.info.Info;
-import io.swagger.v3.oas.models.security.SecurityRequirement;
-import io.swagger.v3.parser.core.models.SwaggerParseResult;
-import org.schematik.Application;
+import jakarta.persistence.Entity;
+import org.schematik.api.annotation.Controller;
+import org.schematik.api.annotation.parameter.*;
+import org.schematik.api.annotation.request.*;
+import org.schematik.api.security.RouteRoleUtils;
+import org.schematik.gson.LocalDateAdapter;
 import org.schematik.jetty.JettyServer;
 import org.schematik.plugins.PluginConfig;
-import org.schematik.util.resource.FileResourceUtil;
-import org.schematik.util.xml.XMLParser;
-import org.schematik.util.xml.XmlElement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.lang.reflect.Type;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 
 public class RestApiConfig {
     static Logger logger = LoggerFactory.getLogger(RestApiConfig.class);
 
-    static String defaultSwaggerLocation;
-    static String swaggerRootLocation;
-    static boolean lockRootEndpoints;
+    static Gson gson;
+
+    static Set<Class<? extends Annotation>> requestTypeAnnotations = Set.of(
+            Get.class,
+            Post.class,
+            Put.class,
+            Delete.class,
+            Patch.class,
+            Head.class,
+            Options.class
+    );
+
+    static Set<Class<? extends Annotation>> parameterTypeAnnotations = Set.of(
+            PathParam.class,
+            QueryParam.class,
+            RequestBody.class
+    );
 
     public static synchronized void initialize() {
+        GsonBuilder builder = (new GsonBuilder())
+                .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
+                .registerTypeAdapter(LocalDate.class, new LocalDateAdapter());
+        gson = builder.create();
+
         try {
             logger.info("Initializing REST apis...");
-
-            // Get properties to be used later to set up swagger-ui
-            defaultSwaggerLocation =
-                    Application.getPropertyOrDefault("swagger.configUrl", "/endpoints/list");
-            swaggerRootLocation =
-                    Application.getPropertyOrDefault("swagger.rootUrl", "http://localhost:8090");
-            lockRootEndpoints = Boolean.parseBoolean(
-                    Application.getPropertyOrDefault("swagger.lockRootEndpoints", "false")
-            );
-
-            List<String> yamlEndpoints = new ArrayList<>();
 
             // Get the registered authentication plugin
             IRestApiAuthenticationPlugin authenticationPlugin =
                     (IRestApiAuthenticationPlugin) PluginConfig.getPluginImplementation("WebserviceAuthentication");
 
-            // If no plugin is registered, log a warning saying this
+            // If no plugin is registered, log a warning
             if (authenticationPlugin == null) {
                 logger.warn(
                         "No WebserviceAuthentication plugin has been registered. Webservice security will be disabled."
                 );
             }
 
-            // Each webservice is described in a separate yaml file in the api folder in the resources.
-            // Each tag in the file api.config.xml points to such a yaml file.
-            XmlElement xml = XMLParser.parse(FileResourceUtil.getFileFromResource("api.config.xml"));
-            List<XmlElement> webservices = xml.getElements("webservice");
-            for (XmlElement webservice : webservices) {
-                String descriptorYamlFile = webservice.getProperty("descriptor");
-                String className = webservice.getProperty("class");
+            Set<Class<?>> controllerClasses = RestApiUtils.getControllerClasses();
+            controllerClasses.forEach(controllerClass -> {
+                try {
+                    Object controllerInstance = controllerClass.getConstructor().newInstance();
 
-                String yamlFileContent = FileResourceUtil.readFile(
-                        FileResourceUtil.getFileFromResource("api/" + descriptorYamlFile)
-                );
-                // Parse the yaml file specified in the <webservice> tag
-                SwaggerParseResult swaggerResult = new OpenAPIParser().readContents(yamlFileContent, null, null);
-                OpenAPI openApi = swaggerResult.getOpenAPI();
-                Paths paths = openApi.getPaths();
-                Map<String, Object> extension = openApi.getExtensions();
+                    String controllerEndpoint = processEndpointString(
+                            controllerClass.getAnnotation(Controller.class).endpoint()
+                    );
 
-                Class<?> implementationClass = Class.forName(className);
-                Controller controller = (Controller) implementationClass.getDeclaredConstructor().newInstance();
 
-                String currentWebserviceYamlEndpoint = "/" + descriptorYamlFile
-                        .substring(0, descriptorYamlFile.length() - 4)
-                        .replace(".", "-");
-
-                // Prepare the roles for the current webservice endpoint and register a path that returns the yaml file
-                // if the user has required permissions (permissions are not compulsory).
-                List<RouteRole> currentWebserviceRoles = getRolesFromExtensions(extension, authenticationPlugin);
-                JettyServer.instance.app.get(
-                        currentWebserviceYamlEndpoint,
-                        context -> {
-                            if(authenticationPlugin != null && authenticationPlugin.authenticate(context)) {
-                                context.contentType("application/yaml").result(yamlFileContent);
+                    Method[] methods = controllerClass.getDeclaredMethods();
+                    Arrays.stream(methods).forEach(method -> {
+                        int numberOfRequestAnnotations = 0;
+                        Annotation requestAnnotation = null;
+                        for (Annotation annotation : method.getDeclaredAnnotations()) {
+                            if (requestTypeAnnotations.contains(annotation.annotationType())) {
+                                numberOfRequestAnnotations++;
+                                requestAnnotation = annotation;
                             }
-                        },
-                        currentWebserviceRoles.toArray(new RouteRole[0])
-                );
-                yamlEndpoints.add(currentWebserviceYamlEndpoint);
+                        }
 
-                for (Map.Entry<String, PathItem> pathEntry : paths.entrySet()) {
-                    Map<PathItem.HttpMethod, Operation> operations = pathEntry.getValue().readOperationsMap();
-                    String route = pathEntry.getKey();
+                        if (numberOfRequestAnnotations == 0) {
+                            return;
+                        }
 
-                    for (Map.Entry<PathItem.HttpMethod, Operation> operation : operations.entrySet()) {
-                        Operation operationValue = operation.getValue();
+                        if (numberOfRequestAnnotations > 1) {
+                            logger.error(String.format(
+                                    "%s::%s has more than one request type annotations. Only one request type annotation is allowed per method. Skipping...",
+                                    controllerClass.getName(),
+                                    method.getName()
+                            ));
+                            return;
+                        }
 
-                        // Get the operation id (the method that will be called in the handler class)
-                        String method = operationValue.getOperationId();
-
-                        // Get all roles that are specified by x-schematik-security -> x-schematik-roles
-                        // of the current operation.
-                        List<RouteRole> endpointRoles = new ArrayList<>();
-                        List<SecurityRequirement> securityRequirements = operationValue.getSecurity();
-                        if (securityRequirements != null && !securityRequirements.isEmpty()) {
-                            endpointRoles = getRolesFromExtensions(
-                                    operationValue.getExtensions(),
-                                    authenticationPlugin
+                        String endpoint;
+                        List<RouteRole> roles = new ArrayList<>();
+                        try {
+                            endpoint = processEndpointString(requestAnnotation.annotationType()
+                                    .getDeclaredMethod("endpoint")
+                                    .invoke(requestAnnotation)
+                                    .toString()
                             );
+                            endpoint = controllerEndpoint + endpoint;
+
+                            Class<? extends Enum<? extends RouteRole>> roleClass =
+                                    (Class<? extends Enum<? extends RouteRole>>) requestAnnotation.annotationType()
+                                    .getDeclaredMethod("roleClass")
+                                    .invoke(requestAnnotation);
+                            String[] roleNames = (String[]) requestAnnotation.annotationType()
+                                    .getDeclaredMethod("roles")
+                                    .invoke(requestAnnotation);
+                            Arrays.stream(roleNames).forEach(roleName -> {
+                                roles.add(RouteRoleUtils.routeRoleFromString(roleClass, roleName));
+                            });
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
                         }
 
-                        switch (operation.getKey()) {
-                            case GET -> {
-                                Method getMethod;
-                                try {
-                                    getMethod = controller.getClass().getDeclaredMethod(method, Context.class);
-                                } catch (NoSuchMethodException e) {
-                                    throw new RuntimeException(e);
-                                }
-                                JettyServer.instance.app.get(
-                                        route,
-                                        context -> {
-                                            if (authenticationPlugin != null && authenticationPlugin.authenticate(context)) {
-                                                getMethod.invoke(controller, context);
-                                            }
-                                        },
-                                        endpointRoles.toArray(new RouteRole[0])
-                                );
+                        handleRequestAnnotation(
+                                requestAnnotation,
+                                endpoint,
+                                method,
+                                controllerInstance,
+                                authenticationPlugin,
+                                roles.toArray(new RouteRole[0])
+                        );
 
-                                logger.info(
-                                        controller.getClass().getName() + "::" + method
-                                        + " serves GET requests on route " + route
-                                );
-                            }
-                            case POST -> {
-                                Method postMethod;
-                                try {
-                                    postMethod = controller.getClass().getDeclaredMethod(method, Context.class);
-                                } catch (NoSuchMethodException e) {
-                                    throw new RuntimeException(e);
-                                }
-                                JettyServer.instance.app.post(
-                                        route,
-                                        context -> {
-                                            if (authenticationPlugin != null && authenticationPlugin.authenticate(context)) {
-                                                postMethod.invoke(controller, context);
-                                            }
-                                        },
-                                        endpointRoles.toArray(new RouteRole[0])
-                                );
-
-                                logger.info(
-                                        controller.getClass().getName() + "::" + method
-                                        + " serves POST requests on route " + route
-                                );
-                            }
-                            case PUT -> {
-                                Method putMethod;
-                                try {
-                                    putMethod = controller.getClass().getDeclaredMethod(method, Context.class);
-                                } catch (NoSuchMethodException e) {
-                                    throw new RuntimeException(e);
-                                }
-                                JettyServer.instance.app.put(
-                                        route,
-                                        context -> {
-                                            if (authenticationPlugin != null && authenticationPlugin.authenticate(context)) {
-                                                putMethod.invoke(controller, context);
-                                            }
-                                        },
-                                        endpointRoles.toArray(new RouteRole[0])
-                                );
-
-                                logger.info(
-                                        controller.getClass().getName() + "::" + method
-                                        + " serves PUT requests on route " + route
-                                );
-                            }
-                            case DELETE -> {
-                                Method deleteMethod;
-                                try {
-                                    deleteMethod = controller.getClass().getDeclaredMethod(method, Context.class);
-                                } catch (NoSuchMethodException e) {
-                                    throw new RuntimeException(e);
-                                }
-                                JettyServer.instance.app.delete(
-                                        route,
-                                        context -> {
-                                            if (authenticationPlugin != null && authenticationPlugin.authenticate(context)) {
-                                                deleteMethod.invoke(controller, context);
-                                            }
-                                        },
-                                        endpointRoles.toArray(new RouteRole[0])
-                                );
-
-                                logger.info(
-                                        controller.getClass().getName() + "::" + method
-                                        + " serves DELETE requests on route " + route
-                                );
-                            }
-                            default -> {
-                            }
-                        }
-                    }
+                        logger.info("Registered " + requestAnnotation.annotationType() + " endpoint at " + endpoint);
+                    });
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
                 }
-            }
-
-            String yamlString = generateYamlStringForEndpoints(yamlEndpoints);
-            JettyServer.instance.app.get(
-                    defaultSwaggerLocation,
-                    context -> context.contentType("application/yaml").result(yamlString)
-            );
-
-            // Register Swagger routes
-            JettyServer.instance.app.get("/swagger", context -> {
-                context.redirect("swagger-ui/index.html");
             });
 
-//            JettyServer.instance.app.get("/", context -> {
-//                JettyServer.instance.app.
-//            });
+
         } catch (Exception e) {
             logger.error("Error while initializing REST apis", e);
         }
     }
 
-    private static OpenAPI getOpenApi() {
-        return new OpenAPI()
-                .info(new Info().title(Application.getPropertyOrDefault("swagger.title", "Swagger UI"))
-                        .description(Application.getPropertyOrDefault(
-                                "swagger.description",
-                                "Swagger UI api description")
-                        )
-                        .version("1.0.0")
-                );
-    }
-
-    private static String generateYamlStringForEndpoints(List<String> endpoints) {
-        String apiVersion = Application.getPropertyOrDefault("swagger.apiVersion", "1.0.0");
-
-        StringBuilder result = new StringBuilder("openapi: 3.0.0\n" +
-                "info:\n" +
-                "  title: Endpoints\n" +
-                "  version: " + apiVersion + "\n" +
-                "  description: A list of all root points in the application\n" +
-                "paths:\n");
-
-        for (String endpoint : endpoints) {
-            String currentEndpointString = "  " + endpoint + ":\n" +
-                    "    get:\n" +
-                    "      summary: Get all endpoints at " + endpoint + "\n" +
-                    "      tags:\n" +
-                    "        - " + endpoint + "\n" +
-                    "      operationId: " + endpoint + "\n" +
-                    "      responses:\n" +
-                    "        '200':\n" +
-                    "          description: Successfully obtain a yaml representation of all endpoints at " + swaggerRootLocation + endpoint + "\n" +
-                    "          content:\n" +
-                    "            text/plain:\n" +
-                    "              schema:\n" +
-                    "                type: string\n";
-            result.append(currentEndpointString);
+    private static String processEndpointString(String endpoint) {
+        if (!endpoint.startsWith("/")) {
+            endpoint = "/" + endpoint;
+        }
+        if (endpoint.endsWith("/")) {
+            endpoint = endpoint.substring(0, endpoint.length() - 1);
         }
 
-        return result.toString();
+        return endpoint;
     }
 
-    private static List<RouteRole> getRolesFromExtensions(
-            Map<String, Object> extensions,
-            IRestApiAuthenticationPlugin authenticationPlugin
-    ) {
-        List<RouteRole> endpointRoles = new ArrayList<>();
-
-        if (extensions == null) {
-            return endpointRoles;
+    private static Object stringToTypedObject(Type type, String value) {
+        if (type == Integer.class || type == int.class) {
+            return Integer.parseInt(value);
+        } else if (type == Long.class || type == long.class) {
+            return Long.parseLong(value);
+        } else if (type == Double.class || type == double.class) {
+            return Double.parseDouble(value);
+        } else if (type == Float.class || type == float.class) {
+            return Float.parseFloat(value);
+        } else if (type == Boolean.class || type == boolean.class) {
+            return Boolean.parseBoolean(value);
+        } else if (type == Character.class || type == char.class) {
+            return value;
+        } else if (type == String.class) {
+            return value;
+        } else if (type == BigDecimal.class) {
+            return new BigDecimal(value);
+        } else if (type == BigInteger.class) {
+            return new BigInteger(value);
+        } else if (type == LocalDate.class) {
+            return LocalDate.parse(value);
+        } else if (type == LocalTime.class) {
+            return LocalTime.parse(value);
+        } else if (type == LocalDateTime.class) {
+            return LocalDateTime.parse(value);
+        } else {
+            throw new IllegalArgumentException("Unsupported type: " + type.getTypeName());
         }
+    }
 
-        // Get all roles that are specified by the x-schematik-security -> x-schematik-roles
-        // path of the current operation.
-        for (var param : extensions.entrySet()) {
-            if (param.getKey().equals("x-schematik-security")) {
-                if (param.getValue() instanceof Map<?, ?> rolesMap
-                        && rolesMap.get("x-schematik-roles") instanceof List<?> tempEndpointRoles) {
-                    for (var endpointRole : tempEndpointRoles) {
-                        RouteRole currentEndpointRole =
-                                Objects.requireNonNull(authenticationPlugin)
-                                        .roleFromString((String) endpointRole);
-                        endpointRoles.add(currentEndpointRole);
-                    }
+    private static List<Object> buildParametersForMethod(Method method, Context context) {
+        List<Object> parameters = new ArrayList<>();
+        for (Parameter parameter : method.getParameters()) {
+            int numberOfParameterAnnotations = 0;
+            Annotation parameterAnnotation = null;
+            for (Annotation annotation : parameter.getDeclaredAnnotations()) {
+                if (parameterTypeAnnotations.contains(annotation.annotationType())) {
+                    numberOfParameterAnnotations++;
+                    parameterAnnotation = annotation;
                 }
+            }
+
+            if (numberOfParameterAnnotations == 0) {
+                break;
+            }
+
+            if (numberOfParameterAnnotations > 1) {
+                throw new RuntimeException(String.format(
+                        "Parameter %s in method %s has more than one parameter annotations. Only one parameter annotation is allowed per parameter.",
+                        parameter.getName(),
+                        method.getName()
+                ));
+            }
+
+            String asd = parameter.getName();
+
+            Type parameterType = parameter.getType();
+            if (parameterAnnotation instanceof PathParam pathParamAnnotation) {
+                String parameterName = pathParamAnnotation.name().isEmpty()
+                        ? parameter.getName()
+                        : pathParamAnnotation.name();
+
+                String parameterValue = context.pathParam(parameterName);
+
+                parameters.add(stringToTypedObject(parameterType, parameterValue));
+            } else if (parameterAnnotation instanceof QueryParam queryParamAnnotation) {
+                String parameterName = queryParamAnnotation.name().isEmpty()
+                        ? parameter.getName()
+                        : queryParamAnnotation.name();
+
+                String parameterValue = context.queryParam(parameterName);
+
+                parameters.add(stringToTypedObject(parameterType, parameterValue));
+            } else if (parameterAnnotation instanceof RequestBody requestBodyAnnotation) {
+                parameters.add(context.jsonMapper().fromJsonString(context.body(), parameterType));
             }
         }
 
-        return endpointRoles;
+        return parameters;
+    }
+
+    private static void sendResponse(Context context, Object value) {
+        if (value == null) {
+            context.result();
+            return;
+        }
+
+        Class<?> valueClass = value.getClass();
+        if (valueClass.isAnnotationPresent(Entity.class)) {
+            context.result(context.jsonMapper().toJsonString(value, valueClass));
+            return;
+        }
+
+        context.result(value.toString());
+    }
+
+    private static void executeMethodForContext(
+            Method method,
+            Context context,
+            Object controllerInstance,
+            IRestApiAuthenticationPlugin authenticationPlugin
+    ) throws InvocationTargetException, IllegalAccessException {
+        List<Object> parameters = buildParametersForMethod(method, context);
+
+        Object returnValue;
+
+        // Authenticate if needed
+        if(authenticationPlugin != null) {
+            if (authenticationPlugin.authenticate(context)) {
+                returnValue = method.invoke(controllerInstance, parameters.toArray());
+            } else {
+                context.status(HttpStatus.UNAUTHORIZED);
+                context.result("Forbidden: You don't have access to this resource!");
+                return;
+            }
+        } else {
+            returnValue = method.invoke(controllerInstance, parameters.toArray());
+        }
+
+        if (returnValue instanceof ResponseEntity<?> responseEntity) {
+            context.status(responseEntity.statusCode);
+            sendResponse(context, responseEntity.entity);
+        } else {
+            context.status(HttpStatus.OK);
+            sendResponse(context, returnValue);
+        }
+    }
+
+    private static void handleRequestAnnotation(
+            Annotation requestAnnotation,
+            String endpoint,
+            Method method,
+            Object controllerInstance,
+            IRestApiAuthenticationPlugin authenticationPlugin,
+            RouteRole[] roles
+    ) {
+        if (requestAnnotation instanceof Get) {
+            JettyServer.instance.app.get(
+                    endpoint,
+                    context -> executeMethodForContext(
+                            method,
+                            context,
+                            controllerInstance,
+                            authenticationPlugin
+                    ),
+                    roles
+            );
+        } else if (requestAnnotation instanceof Post) {
+            JettyServer.instance.app.post(
+                    endpoint,
+                    context -> executeMethodForContext(
+                            method,
+                            context,
+                            controllerInstance,
+                            authenticationPlugin
+                    ),
+                    roles
+            );
+        } else if (requestAnnotation instanceof Put) {
+            JettyServer.instance.app.put(
+                    endpoint,
+                    context -> executeMethodForContext(
+                            method,
+                            context,
+                            controllerInstance,
+                            authenticationPlugin
+                    ),
+                    roles
+            );
+        } else if (requestAnnotation instanceof Delete) {
+            JettyServer.instance.app.delete(
+                    endpoint,
+                    context -> executeMethodForContext(
+                            method,
+                            context,
+                            controllerInstance,
+                            authenticationPlugin
+                    ),
+                    roles
+            );
+        } else if (requestAnnotation instanceof Patch) {
+            JettyServer.instance.app.patch(
+                    endpoint,
+                    context -> executeMethodForContext(
+                            method,
+                            context,
+                            controllerInstance,
+                            authenticationPlugin
+                    ),
+                    roles
+            );
+        } else if (requestAnnotation instanceof Head) {
+            JettyServer.instance.app.head(
+                    endpoint,
+                    context -> executeMethodForContext(
+                            method,
+                            context,
+                            controllerInstance,
+                            authenticationPlugin
+                    ),
+                    roles
+            );
+        } else if (requestAnnotation instanceof Options) {
+            JettyServer.instance.app.options(
+                    endpoint,
+                    context -> executeMethodForContext(
+                            method,
+                            context,
+                            controllerInstance,
+                            authenticationPlugin
+                    ),
+                    roles
+            );
+        }
     }
 }
