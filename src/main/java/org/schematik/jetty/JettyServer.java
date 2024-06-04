@@ -2,6 +2,7 @@ package org.schematik.jetty;
 
 import com.google.gson.Gson;
 import io.javalin.Javalin;
+import io.javalin.config.JavalinConfig;
 import io.javalin.http.staticfiles.Location;
 import io.javalin.json.JavalinGson;
 import io.javalin.plugin.bundled.CorsPluginConfig;
@@ -16,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.util.Objects;
+import java.util.function.Consumer;
 
 public class JettyServer {
     public static JettyServer instance;
@@ -35,16 +37,12 @@ public class JettyServer {
     }
 
     public void start(Gson gson) {
-        instance = this;
-
-        app = Javalin.create(javalinConfig -> {
+        start(javalinConfig -> {
             javalinConfig.jetty.threadPool = new QueuedThreadPool(maxThreads, minThreads, idleTimeout);
 
             javalinConfig.showJavalinBanner = false;
 
-            javalinConfig.bundledPlugins.enableCors(cors -> {
-                cors.addRule(CorsPluginConfig.CorsRule::anyHost);
-            });
+            javalinConfig.bundledPlugins.enableCors(cors -> cors.addRule(CorsPluginConfig.CorsRule::anyHost));
 
             javalinConfig.staticFiles.add(staticFileConfig -> {
                 staticFileConfig.directory = "/swagger-ui";
@@ -56,6 +54,12 @@ public class JettyServer {
 
             // javalinConfig.bundledPlugins.enableRouteOverview("/");
         });
+    }
+
+    public void start(Consumer<JavalinConfig> config) {
+        instance = this;
+
+        app = Javalin.create(config);
 
         // Load properties
         Application.initialize();
