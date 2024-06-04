@@ -10,6 +10,8 @@ import java.util.*;
 
 public class HibernateTest {
     public static void test() {
+        System.out.println("================== General test ==================");
+
         // Test Select and Delete
         Bundle.runWithNewBundle(HibernateTest::clearTables);
 
@@ -30,9 +32,11 @@ public class HibernateTest {
             permission3.setDescription("A permission that replaces all other permissions.");
             bundle.add(permission3);
 
+            System.out.println("Checking id values:");
             System.out.println(permission1);
             System.out.println(permission2);
             System.out.println(permission3);
+            System.out.println("-----------------------------------------------------");
 
             User user1 = new User();
             user1.setUsername("username1");
@@ -65,17 +69,28 @@ public class HibernateTest {
             QueryResult<User> selectedUsersQueryResult = selectUsersQuery.select();
             List<User> selectedUsersList = selectedUsersQueryResult.getResults();
 
-            System.out.println("Expected users: " + expectedNumberOfUsers);
-            System.out.println("Actual users: " + selectedUsersQueryResult.count());
+            System.out.println("Checking number of results:");
+            System.out.println("Expected number of results (before fetching): " + expectedNumberOfUsers);
+            System.out.println("Actual number of results (after fetching): " + selectedUsersQueryResult.count());
+            System.out.println("-----------------------------------------------------");
+
+            System.out.println("Checking results with relation to other entities:");
             selectedUsersList.forEach(selectedUser -> System.out.println(selectedUser.toString()));
+            System.out.println("-----------------------------------------------------");
         });
 
         // Test Select and Update
         Bundle.runWithNewBundle(bundle -> {
+            System.out.println("Checking entity update:");
+
             Query<Permission> selectPermissionQuery = Query.make(Permission.class)
                     .compare("code", CompareOperator.EQUALS, "LOGIN_PERMISSION");
             QueryResult<Permission> selectPermissionQueryResult = selectPermissionQuery.select();
             Permission selectedPermission = selectPermissionQueryResult.ensureSingleResult();
+
+            System.out.println("Entity to update with:");
+            System.out.println(selectedPermission.toString());
+            System.out.println("-----------------------------------------------------");
 
             Query<User> selectUsersQuery = Query.make(User.class)
                     .compare("username", CompareOperator.EQUALS, "username1");
@@ -83,7 +98,36 @@ public class HibernateTest {
             User selectedUser = selectedUserQueryResult.ensureSingleResult();
             bundle.add(selectedUser);
 
+            System.out.println("Entity to update:");
+            System.out.println(selectedUser.toString());
+            System.out.println("-----------------------------------------------------");
+
             selectedUser.setPermissions(new HashSet<>(Collections.singletonList(selectedPermission)));
+
+            selectUsersQuery = Query.make(User.class)
+                    .compare("username", CompareOperator.EQUALS, "username1");
+            selectedUserQueryResult = selectUsersQuery.select();
+
+            System.out.println("Updated entity:");
+            System.out.println(selectedUserQueryResult.ensureSingleResult().toString());
+        });
+    }
+
+    public static void testPagination() {
+        System.out.println("================== Pagination test ==================");
+
+        Bundle.runWithNewBundle(bundle -> {
+            Query<User> selectUsersQuery = Query.make(User.class)
+                    .setPageSize(1);
+            QueryResult<User> userPageResults = selectUsersQuery.select();
+
+            do {
+                System.out.printf("Page #%d:%n", userPageResults.getCurrentPageNumber());
+
+                userPageResults.getResults().forEach(selectUser -> System.out.println(selectUser.toString()));
+            } while (userPageResults.nextPage() > 0);
+
+            System.out.println("-----------------------------------------------------");
         });
     }
 

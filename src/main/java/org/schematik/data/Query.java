@@ -18,9 +18,15 @@ public class Query<T> {
     List<QueryCriterion<T>> criteria;
     T entity;
 
+    int pageSize;
+
+    int currentPage;
+
     private Query(Class<T> type) {
         this.type = type;
         this.criteria = new ArrayList<>();
+        this.pageSize = 0;
+        this.currentPage = 0;
     }
 
     public static <T> Query<T> make(Class<T> type) {
@@ -86,9 +92,17 @@ public class Query<T> {
                 logger.debug(String.format("%s - Selecting an entity outside of a bundle!", this.getClass()));
                 Bundle.runWithNewBundle(bundle -> result.set(select()));
             } else {
-                result.set(new QueryResult<>(session
-                        .createQuery(QueryUtils.generateCriteriaQuery(session, this))
-                        .getResultList()
+                org.hibernate.query.Query<T> query = session
+                        .createQuery(QueryUtils.generateCriteriaQuery(session, this));
+
+                if (pageSize > 0) {
+                    query.setFirstResult(currentPage * pageSize).setMaxResults(pageSize);
+                    currentPage++;
+                }
+
+                result.set(new QueryResult<>(
+                        this,
+                        query.getResultList()
                 ));
             }
         } else {
@@ -108,10 +122,14 @@ public class Query<T> {
                 logger.debug(String.format("%s - Selecting entity count outside of a bundle!", this.getClass()));
                 Bundle.runWithNewBundle(bundle -> result.set(count()));
             } else {
-                result.set(session
-                        .createQuery(QueryUtils.countResults(session, this))
-                        .getSingleResult()
-                );
+                org.hibernate.query.Query<Long> query = session
+                        .createQuery(QueryUtils.countResults(session, this));
+
+                if (pageSize > 0) {
+                    query.setFirstResult(currentPage * pageSize).setMaxResults(pageSize);
+                }
+
+                result.set(query.getSingleResult());
             }
         } else {
             return 0;
@@ -136,5 +154,25 @@ public class Query<T> {
 
     public Class<T> getType() {
         return type;
+    }
+
+    public int getCurrentPage() {
+        return Math.max(0, currentPage - 1);
+    }
+
+    public Query<T> setCurrentPage(int currentPage) {
+        this.currentPage = currentPage;
+
+        return this;
+    }
+
+    public Query<T> setPageSize(int pageSize) {
+        this.pageSize = pageSize;
+
+        return this;
+    }
+
+    public boolean isPageQuery() {
+        return pageSize > 0;
     }
 }

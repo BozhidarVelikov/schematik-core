@@ -1,18 +1,15 @@
 package org.schematik.data;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class QueryResult<T> {
     List<T> results;
 
-    public QueryResult(List<T> results) {
-        this.results = results;
-    }
+    Query<T> query;
 
-    public QueryResult(T result) {
-        this.results = new ArrayList<>();
-        results.add(result);
+    public QueryResult(Query<T> query, List<T> results) {
+        this.query = query;
+        this.results = results;
     }
 
     public int count() {
@@ -37,5 +34,24 @@ public class QueryResult<T> {
 
     public T getLast() {
         return results != null && !results.isEmpty() ? results.get(results.size() - 1) : null;
+    }
+
+    public Long nextPage() {
+        QueryResult<T> result = query.select();
+        this.results = result.getResults();
+
+        return (long) results.size();
+    }
+
+    public Long countNextPageResults() {
+        if (query.isPageQuery()) {
+            return query.count();
+        }
+
+        throw new RuntimeException("Query is not a paged query!");
+    }
+
+    public int getCurrentPageNumber() {
+        return query.getCurrentPage();
     }
 }
