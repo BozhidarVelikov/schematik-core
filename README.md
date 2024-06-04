@@ -119,3 +119,40 @@ describe when to run the task. Scheduling the task can be done in two ways:
    3. `fixedRate` - If set to true, the task will run multiple times. If set to false,
       the task won't be rescheduled after the first run. This field is optional and a default
       value of true is used if not present.
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<scheduled-tasks>
+    <task class="org.schematik.scheduler.test.MyScheduledTask">
+        <schedule cron="*/5 * * * * *"/>
+        <schedule period="12000" initialDelay="1000" fixedRate="true"/>
+    </task>
+</scheduled-tasks>
+```
+<i>Note: You don't have to use both schedules to schedule a task. They are given here just as an example.</i>
+
+#### MyScheduledTask.java
+```java
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class MyScheduledTask implements IScheduledTask {
+    Logger logger = LoggerFactory.getLogger(MyScheduledTask.class);
+
+    @Override
+    public void beforeJob() {
+        logger.info("beforeJob finished");
+    }
+
+    @Override
+    public void doJob() {
+        logger.info("Current task is running on thread [" + Thread.currentThread().getName() + "].");
+        logger.info("doJob finished");
+    }
+
+    @Override
+    public void afterJob() {
+        logger.info("afterJob finished");
+    }
+}
+```
