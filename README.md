@@ -123,10 +123,10 @@ describe when to run the task. Scheduling the task can be done in two ways:
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <scheduled-tasks>
-    <task class="org.schematik.scheduler.test.MyScheduledTask">
-        <schedule cron="*/5 * * * * *"/>
-        <schedule period="12000" initialDelay="1000" fixedRate="true"/>
-    </task>
+   <task class="org.schematik.scheduler.test.MyScheduledJob">
+      <schedule cron="*/5 * * * * *"/>
+      <schedule period="12000" initialDelay="1000" fixedRate="true"/>
+   </task>
 </scheduled-tasks>
 ```
 <i>Note: You don't have to use both schedules to schedule a task. They are given here just as an example.</i>

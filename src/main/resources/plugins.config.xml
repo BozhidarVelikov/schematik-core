@@ -13,4 +13,11 @@
             enabled="true"
             env="dev"
     />
+
+    <plugin
+            name="JobScheduler"
+            class="org.schematik.scheduler.JobSchedulerPlugin"
+            enabled="true"
+            env="dev"
+    />
 </plugins>

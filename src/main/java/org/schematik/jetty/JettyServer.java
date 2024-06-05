@@ -11,10 +11,8 @@ import org.schematik.Application;
 import org.schematik.gson.GsonUtils;
 import org.schematik.plugin.PluginConfig;
 import org.schematik.api.RestApiConfig;
-import org.schematik.scheduler.TaskSchedulerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -29,8 +27,6 @@ public class JettyServer {
     int idleTimeout = 120;
 
     public Javalin app;
-
-    AnnotationConfigApplicationContext context;
 
     public void start() {
         start(GsonUtils.getDefaultGson());
@@ -69,9 +65,6 @@ public class JettyServer {
 
         // Rest API config
         RestApiConfig.initialize();
-
-        // Task scheduler
-        context = new AnnotationConfigApplicationContext(TaskSchedulerConfig.class);
 
         app.start(8090);
 
