@@ -8,6 +8,8 @@ import org.schematik.data.hibernate.HibernateUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Consumer;
 
 public class Bundle {
@@ -17,6 +19,8 @@ public class Bundle {
     private final Session session;
     private final Transaction transaction;
 
+    static Map<Session, Bundle> bundleMap;
+
     private Bundle() {
         session = factory.getCurrentSession();
         transaction = session.beginTransaction();
@@ -24,6 +28,7 @@ public class Bundle {
 
     public static void initialize() {
         factory = HibernateUtil.getSessionFactory();
+        bundleMap = new HashMap<>();
     }
 
     public static Bundle create() {
@@ -31,7 +36,10 @@ public class Bundle {
             factory = HibernateUtil.getSessionFactory();
         }
 
-        return new Bundle();
+        Bundle bundle = new Bundle();
+        bundleMap.put(bundle.getSession(), bundle);
+
+        return bundle;
     }
 
     public void commit() {
@@ -91,6 +99,7 @@ public class Bundle {
                     e
             );
         } finally {
+            bundleMap.remove(bundle.getSession());
             bundle.closeSession();
         }
     }
@@ -106,5 +115,9 @@ public class Bundle {
 
     public Session getSession() {
         return session;
+    }
+
+    public static Bundle getCurrentBundle() {
+        return bundleMap.get(getSessionForCurrentBundle());
     }
 }

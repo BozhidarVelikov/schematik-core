@@ -17,8 +17,11 @@
     </distributionManagement>
 
     <properties>
-        <maven.compiler.source>20</maven.compiler.source>
-        <maven.compiler.target>20</maven.compiler.target>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+
+        <!-- Schematik Components -->
+        <schematik.components.version>0.0.1</schematik.components.version>
         <!-- Logging -->
         <log4java.version>2.20.0</log4java.version>
         <sl4java.version>2.0.7</sl4java.version>
@@ -40,16 +43,16 @@
     </properties>
 
     <build>
-<!--        <resources>-->
-<!--            <resource>-->
-<!--                <directory>src/main/resources</directory>-->
-<!--                <excludes>-->
-<!--                    <exclude>*</exclude>-->
-<!--                    <exclude>**/*.*</exclude>-->
-<!--                </excludes>-->
-<!--                <filtering>false</filtering>-->
-<!--            </resource>-->
-<!--        </resources>-->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>*</exclude>
+                    <exclude>**/*.*</exclude>
+                </excludes>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -59,6 +62,9 @@
                     <compilerArgs>
                         <arg>-parameters</arg>
                     </compilerArgs>
+                    <excludes>
+                        <exclude>org/schematik/**/test/**/*.java</exclude>
+                    </excludes>
                 </configuration>
             </plugin>
         </plugins>
@@ -77,6 +83,12 @@
     </dependencyManagement>
 
     <dependencies>
+        <dependency>
+            <groupId>com.schematik</groupId>
+            <artifactId>schematik-components</artifactId>
+            <version>${schematik.components.version}</version>
+        </dependency>
+
         <!-- Logging -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>

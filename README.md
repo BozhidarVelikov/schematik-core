@@ -1,5 +1,8 @@
 ## Schematik Framework Core
 
+Create Next.js app without prompts:
+`npx create-next-app schematik-test-app --javascript --no-eslint --no-tailwind --src-dir --app --import-alias "@/*"`
+
 ### Table of contents
 1. [What is Schematik Framework?](#what-is-schematik-framework)
 2. [Plugins](#plugins)

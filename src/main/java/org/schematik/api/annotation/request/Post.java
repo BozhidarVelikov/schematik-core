@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
 @Target({ ElementType.METHOD })
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Post {
-    String path() default "";
+    String endpoint() default "";
     Class<? extends Enum<? extends RouteRole>> roleClass() default DefaultUserRole.class;
     String[] roles() default {};
 }

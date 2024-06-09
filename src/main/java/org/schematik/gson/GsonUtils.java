@@ -7,10 +7,16 @@ import com.google.gson.GsonBuilder;
 import java.time.LocalDate;
 
 public class GsonUtils {
+    static Gson gson;
+
     public static Gson getDefaultGson() {
-        GsonBuilder builder = (new GsonBuilder())
-                .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
-                .registerTypeAdapter(LocalDate.class, new LocalDateAdapter());
-        return builder.create();
+        if (gson == null) {
+            GsonBuilder builder = (new GsonBuilder())
+                    .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
+                    .registerTypeAdapter(LocalDate.class, new LocalDateAdapter());
+            gson = builder.create();
+        }
+
+        return gson;
     }
 }
