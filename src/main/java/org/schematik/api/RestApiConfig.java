@@ -6,7 +6,6 @@ import com.google.gson.GsonBuilder;
 import io.javalin.http.Context;
 import io.javalin.http.HttpStatus;
 import io.javalin.security.RouteRole;
-import jakarta.persistence.Entity;
 import org.schematik.api.annotation.Controller;
 import org.schematik.api.annotation.parameter.*;
 import org.schematik.api.annotation.request.*;
@@ -18,16 +17,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class RestApiConfig {
     static Logger logger = LoggerFactory.getLogger(RestApiConfig.class);
@@ -121,9 +118,9 @@ public class RestApiConfig {
                             String[] roleNames = (String[]) requestAnnotation.annotationType()
                                     .getDeclaredMethod("roles")
                                     .invoke(requestAnnotation);
-                            Arrays.stream(roleNames).forEach(roleName -> {
-                                roles.add(RouteRoleUtils.routeRoleFromString(roleClass, roleName));
-                            });
+                            Arrays.stream(roleNames).forEach(roleName ->
+                                    roles.add(RouteRoleUtils.routeRoleFromString(roleClass, roleName))
+                            );
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
@@ -193,7 +190,13 @@ public class RestApiConfig {
 
     private static List<Object> buildParametersForMethod(Method method, Context context) {
         List<Object> parameters = new ArrayList<>();
-        for (Parameter parameter : method.getParameters()) {
+
+        Parameter[] methodParameters = method.getParameters();
+        if (methodParameters.length == 1 && methodParameters[0].getType().equals(Context.class)) {
+            return Collections.singletonList(context);
+        }
+
+        for (Parameter parameter : methodParameters) {
             int numberOfParameterAnnotations = 0;
             Annotation parameterAnnotation = null;
             for (Annotation annotation : parameter.getDeclaredAnnotations()) {
@@ -215,8 +218,6 @@ public class RestApiConfig {
                 ));
             }
 
-            String asd = parameter.getName();
-
             Type parameterType = parameter.getType();
             if (parameterAnnotation instanceof PathParam pathParamAnnotation) {
                 String parameterName = pathParamAnnotation.name().isEmpty()
@@ -234,7 +235,7 @@ public class RestApiConfig {
                 String parameterValue = context.queryParam(parameterName);
 
                 parameters.add(stringToTypedObject(parameterType, parameterValue));
-            } else if (parameterAnnotation instanceof RequestBody requestBodyAnnotation) {
+            } else if (parameterAnnotation instanceof RequestBody) {
                 parameters.add(context.jsonMapper().fromJsonString(context.body(), parameterType));
             }
         }
@@ -249,12 +250,44 @@ public class RestApiConfig {
         }
 
         Class<?> valueClass = value.getClass();
-        if (valueClass.isAnnotationPresent(Entity.class)) {
+
+        String typedObjectString = typedObjectToString(valueClass, value);
+
+        if (typedObjectString != null) {
+            context.result(typedObjectString);
+        } else if (value instanceof Collection<?> collection) {
+            StringBuilder result = new StringBuilder("[");
+            result.append(collection.stream()
+                    .map(collectionItem -> {
+                        Class<?> collectionItemClass = collectionItem.getClass();
+                        return context.jsonMapper().toJsonString(collectionItem, collectionItemClass);
+                    })
+                    .collect(Collectors.joining(", "))
+            );
+            result.append("]");
+            context.result(result.toString());
+        } else { // if (valueClass.isAnnotationPresent(Entity.class)) {
             context.result(context.jsonMapper().toJsonString(value, valueClass));
-            return;
+        }
+    }
+
+    private static String typedObjectToString(Type type, Object value) {
+        if (type == Integer.class || type == int.class
+            || type == Long.class || type == long.class
+            || type == Double.class || type == double.class
+            || type == Float.class || type == float.class
+            || type == Boolean.class || type == boolean.class
+            || type == Character.class || type == char.class
+            || type == String.class
+            || type == BigDecimal.class
+            || type == BigInteger.class
+            || type == LocalDate.class
+            || type == LocalTime.class
+            || type == LocalDateTime.class) {
+            return value.toString();
         }
 
-        context.result(value.toString());
+        return null;
     }
 
     private static void executeMethodForContext(
@@ -282,6 +315,12 @@ public class RestApiConfig {
 
         if (returnValue instanceof ResponseEntity<?> responseEntity) {
             context.status(responseEntity.statusCode);
+
+            // Set headers
+            for (Map.Entry<String, String> header : responseEntity.headers.entrySet()) {
+                context.header(header.getKey(), header.getValue());
+            }
+
             sendResponse(context, responseEntity.entity);
         } else {
             context.status(HttpStatus.OK);

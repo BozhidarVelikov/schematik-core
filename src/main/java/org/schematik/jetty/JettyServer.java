@@ -8,6 +8,7 @@ import io.javalin.json.JavalinGson;
 import io.javalin.plugin.bundled.CorsPluginConfig;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.schematik.Application;
+import org.schematik.data.transaction.Bundle;
 import org.schematik.gson.GsonUtils;
 import org.schematik.plugin.PluginConfig;
 import org.schematik.api.RestApiConfig;
@@ -59,6 +60,9 @@ public class JettyServer {
 
         // Load properties
         Application.initialize();
+
+        // Initialize bundle and database
+        Bundle.initialize();
 
         // Custom plugins
         PluginConfig.initialize();
