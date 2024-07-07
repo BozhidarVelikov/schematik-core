@@ -99,6 +99,8 @@ In order to implement authorization for your route, you should create a plugin c
 ### Queries
 TODO: Add content here.
 
+Check src/main/java/org/schematik/data/hibernate/test for an example on how to use queries.
+
 ### Scheduled Tasks
 Scheduled tasks can be used for processes that need to run at a specific time. In order to
 create a scheduled task, you need to implement the interface `IScheduledTask` and register the
