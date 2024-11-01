@@ -33,31 +33,6 @@ public class Query<T> {
         return new Query<>(type);
     }
 
-    public static <T> QueryResult<T> execute(Class<T> type, String hqlQuery) {
-        Session session = Bundle.getSessionForCurrentBundle();
-
-        AtomicReference<QueryResult<T>> result = new AtomicReference<>();
-
-        if (session != null) {
-            if (!session.getTransaction().isActive()) {
-                logger.debug(String.format("%s - Selecting an entity outside of a bundle!", Query.class));
-                Bundle.runWithNewBundle(bundle -> result.set(execute(type, hqlQuery)));
-            } else {
-                org.hibernate.query.Query<T> query = session
-                        .createQuery(hqlQuery, type);
-
-                result.set(new QueryResult<>(
-                        null,
-                        query.getResultList()
-                ));
-            }
-        } else {
-            return null;
-        }
-
-        return result.get();
-    }
-
     public Query<T> compare(String fieldName, CompareOperator operator, Object value) {
         criteria.add(new CompareCriterion<>(type, fieldName, operator, value));
 
