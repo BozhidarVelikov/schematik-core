@@ -99,10 +99,11 @@ Scheduled tasks can be used for processes that need to run at a specific time. I
 create a scheduled task, you need to implement the interface `IScheduledTask` and register the
 task in `scheduler.config.xml`.
 
-The `IScheduledTask` interface contains three methods: `beforeJob()`, `doJob()`, and
-`afterJob()`. The idea is that beforeJob() will be called to initialize any data needed
-for the task, doJob() will contain the actual task logic, and afterJob() will contain
-any clean-up code.
+The `IScheduledTask` interface contains three methods: `checkInitialConditions()`, `doJob()`, and
+`exitJob()`. The idea is that checkInitialConditions() will be called to check if all conditions
+are met to run the task (by default, this function returns true), doJob() will contain the actual
+task logic, and exitJob() will contain any clean-up code (by default, exitJob() is called even if
+initial conditions are not met or if the task fails while executing).
 
 As mentioned above, the task should also be registered in `scheduler.config.xml`. This is
 done with the `<task>` tag. The class tag contains a `class` property, pointing to the
@@ -131,26 +132,29 @@ describe when to run the task. Scheduling the task can be done in two ways:
 
 #### MyScheduledTask.java
 ```java
+import org.schematik.scheduler.IScheduledJob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MyScheduledTask implements IScheduledTask {
-    Logger logger = LoggerFactory.getLogger(MyScheduledTask.class);
+public class MyScheduledJob implements IScheduledJob {
+   Logger logger = LoggerFactory.getLogger(MyScheduledJob.class);
 
-    @Override
-    public void beforeJob() {
-        logger.info("beforeJob finished");
-    }
+   @Override
+   public boolean checkInitialConditions() {
+      logger.info("checkInitialConditions started");
 
-    @Override
-    public void doJob() {
-        logger.info("Current task is running on thread [" + Thread.currentThread().getName() + "].");
-        logger.info("doJob finished");
-    }
+      return true;
+   }
 
-    @Override
-    public void afterJob() {
-        logger.info("afterJob finished");
-    }
+   @Override
+   public void doJob() {
+      logger.info("Current task is running on thread [" + Thread.currentThread().getName() + "].");
+      logger.info("doJob finished");
+   }
+
+   @Override
+   public void exitJob() {
+      logger.info("exitJob finished");
+   }
 }
 ```

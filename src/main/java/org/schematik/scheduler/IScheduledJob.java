@@ -26,7 +26,9 @@ public interface IScheduledJob extends Job {
         }
     }
 
-    boolean checkInitialConditions();
+    default boolean checkInitialConditions() {
+        return true;
+    }
 
     void doJob();
 
