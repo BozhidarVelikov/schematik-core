@@ -15,21 +15,16 @@ public class DefaultVisualComponentPlugin implements ISchematikPlugin {
     public void register() {
         gson = GsonUtils.getDefaultGson();
 
-        JettyServer.instance.app.get(
-                "api/{component}/{action}",
+        JettyServer.instance.app.post(
+                "api/visual-components/{component}/{action}",
                 context -> {
                     Class<?> componentClass = Class.forName(context.pathParam("component"));
 
                     if (AbstractVisualComponent.class.isAssignableFrom(componentClass)) {
-                        AbstractVisualComponent componentInstance = (AbstractVisualComponent) componentClass
-                                .getConstructor(String.class)
-                                .newInstance(context.body());
+                        AbstractVisualComponent componentInstance = (AbstractVisualComponent) context.bodyAsClass(componentClass);
                         componentClass.getMethod(context.pathParam("action")).invoke(componentInstance);
 
-                        context.result(Objects.requireNonNull(componentClass
-                                .getMethod("getState")
-                                .invoke(componentInstance)
-                        ).toString());
+                        context.result(gson.toJson(componentInstance));
                     }
                 }
         );

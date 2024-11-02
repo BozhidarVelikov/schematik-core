@@ -7,12 +7,12 @@
 <!--            env="dev"-->
 <!--    />-->
 
-    <plugin
-            name="Hibernate"
-            class="org.schematik.data.hibernate.HibernatePlugin"
-            enabled="true"
-            env="dev"
-    />
+<!--    <plugin-->
+<!--            name="Hibernate"-->
+<!--            class="org.schematik.data.hibernate.HibernatePlugin"-->
+<!--            enabled="true"-->
+<!--            env="dev"-->
+<!--    />-->
 
     <plugin
             name="JobScheduler"

@@ -6,12 +6,14 @@ import org.schematik.visuals.component.atomic.TextComponent;
 public class SampleButton extends AbstractButtonComponent {
     int clickedNumber;
 
+    public SampleButton(String state) {
+
+    }
+
     @Override
     public void onClick() {
         clickedNumber++;
-        TextComponent textComponent = new TextComponent();
-        textComponent.setText(String.format("Clicked %d times", clickedNumber));
-        getText();
+        getText().setText(String.format("Clicked %d time(s)", clickedNumber));
     }
 
     public int getClickedNumber() {

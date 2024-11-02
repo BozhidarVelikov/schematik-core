@@ -4,7 +4,7 @@
                       http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.schematik</groupId>
+    <groupId>org.schematik</groupId>
     <artifactId>schematik-core</artifactId>
     <version>0.0.1</version>
 
@@ -30,15 +30,13 @@
         <!-- Gson -->
         <gson.version>2.10.1</gson.version>
         <!-- Javalin -->
-        <javalin.version>6.1.6</javalin.version>
+        <javalin.version>6.3.0</javalin.version>
         <jackson.databind.version>2.15.0</jackson.databind.version>
         <!-- Quartz -->
         <quartz.version>2.3.2</quartz.version>
         <!-- Swagger -->
         <swagger.parser.version>2.1.21</swagger.parser.version>
-        <!-- Hibernate -->
-        <hibernate.core.version>6.5.1.Final</hibernate.core.version>
-        <mysql.connector.j.version>8.4.0</mysql.connector.j.version>
+        <!-- Reflection -->
         <reflections.version>0.10.2</reflections.version>
     </properties>
 
@@ -46,10 +44,10 @@
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
-                <excludes>
-                    <exclude>*</exclude>
-                    <exclude>**/*.*</exclude>
-                </excludes>
+<!--                <excludes>-->
+<!--                    <exclude>*</exclude>-->
+<!--                    <exclude>**/*.*</exclude>-->
+<!--                </excludes>-->
                 <filtering>false</filtering>
             </resource>
         </resources>
@@ -155,19 +153,7 @@
             <version>${swagger.parser.version}</version>
         </dependency>
 
-        <!-- Hibernate -->
-        <dependency>
-            <groupId>org.hibernate</groupId>
-            <artifactId>hibernate-core</artifactId>
-            <version>${hibernate.core.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
-            <version>${mysql.connector.j.version}</version>
-        </dependency>
-
+        <!-- Reflection -->
         <dependency>
             <groupId>org.reflections</groupId>
             <artifactId>reflections</artifactId>
